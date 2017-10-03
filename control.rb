@@ -101,6 +101,11 @@ def main
 				#end
 				mpd.next
 				mpd.play
+
+				# another idea to add a song as the next one
+				# cur_pos = mpd.queue.find{|song|song.id == mpd.current_song.id}.pos
+				# mpd.addid(data[id], cur_pos+1)
+				# mpd.next
 			end # recording
 		when ButtonEvent
 			# a button was pressed, react in the right way
