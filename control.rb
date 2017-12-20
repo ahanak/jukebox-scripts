@@ -9,9 +9,10 @@ require 'button_observer'
 require 'nfc-detector'
 require 'mqtt'
 require 'storage'
+require 'user_feedback'
 
 # Create a child process for the nfc stuff
-fork do
+$nfc_pid = fork do
 	# Child process for the slow nfc things that would otherwise block the whole process with all its threads
 	# Use MQTT for inter process communication (publish here)
 	MQTT::Client.connect('localhost') do |mqtt|
@@ -19,6 +20,18 @@ fork do
 	  nfc.join
 	end
 end
+
+def shutdown
+	begin
+		Process.kill 'TERM', $nfc_pid
+		Process.wait
+	ensure
+		exit 0
+	end
+end
+
+Signal.trap("INT") { shutdown }
+Signal.trap("TERM") { shutdown }
 
 # The file to load the nfc tag ids and associated tracks from
 DATABASE= ARGV.first || 'tags.yml'
@@ -85,12 +98,14 @@ def main
 				if song
 					song = song.file
 					puts "NEW TAG RECORDED: #{id} -> #{song}"
+					UserFeedback.ok
 					data[id] = song
 				end
 			else
 				# default behavior: Play the song associated with this tag
 				puts "Will Play: #{id} -> #{data[id]}"
 				next unless data[id]
+				UserFeedback.ok
 				mpd.clear if mpd.queue.count > 0
 				mpd.add data[id]
 				#mpd.addid(data[id], 0)
@@ -121,6 +136,7 @@ def main
 					mpd.next
 				end
 			when :record
+				UserFeedback.record_mode(event.pressed)
 				recording = event.pressed
 			end
 		end
@@ -129,6 +145,8 @@ def main
 	# wait for the mqtt thread to finish (only reached e.g. on SIGTERM)
 	mqtt_tread.join
 end
+
+UserFeedback.boot_complete
 
 # Catch exceptions in the main an restart the main again if any exception ocured
 begin
