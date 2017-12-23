@@ -107,20 +107,30 @@ def main
 				next unless data[id]
 				UserFeedback.ok
 				mpd.clear if mpd.queue.count > 0
-				mpd.add data[id]
-				#mpd.addid(data[id], 0)
-				#mpd.queue.each {|s| puts "#{s.artist} - #{s.title}"}
 
-				#if mpd.queue.count > 1
-				#	mpd.move(mpd.queue.count)
-				#end
-				mpd.next
+#				mpd.add data[id]
+				times_next = 1
+				s = mpd.where(file: data[id]).first
+				puts s.inspect
+				album_songs = mpd.where({:album => s.album}, {:strict => true})
+				album_songs.sort!{|s1,s2| s1.track <=> s2.track}
+				puts album_songs.inspect
+				if album_songs.size > 0
+					puts "Album found - trying to add"
+					found = false
+					album_songs.each do |s|
+						mpd.add s.file
+						found = true if s.file == data[id]
+						times_next += 1 unless found
+					end
+					puts (found ? "Found": "Not Found")
+					times_next = 1 unless found
+				else
+					mpd.add data[id]
+				end
+				times_next.times { mpd.next }
 				mpd.play
 
-				# another idea to add a song as the next one
-				# cur_pos = mpd.queue.find{|song|song.id == mpd.current_song.id}.pos
-				# mpd.addid(data[id], cur_pos+1)
-				# mpd.next
 			end # recording
 		when ButtonEvent
 			# a button was pressed, react in the right way
