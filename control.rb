@@ -64,8 +64,8 @@ def main
 	# We want to listen to some buttons which are connected to the GPIO pins.
 	# The button config is just a list of these buttons in the form name => BCM pin number
 	button_cfg = {
-		:prev => 20,
-		:next => 21,
+		:prev => 21,
+		:next => 20,
 		:record => 26
 	}
 	# Create an observer which will execute the given lambda if a pin changes.
