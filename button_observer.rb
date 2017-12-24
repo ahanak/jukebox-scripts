@@ -30,6 +30,7 @@ class ButtonObserver
 
   # do the work
 	def run
+		last_release = Time.now - 1000
 		@button_pins.each do |name, pin_cfg|
 			pin_options = DEFAULT_OPTS
 			if pin_cfg.is_a? Hash
@@ -41,7 +42,11 @@ class ButtonObserver
 			PiPiper.watch pin_options do |pin|
 				begin
 					pin.read # set last_value and value correct
-					@callback.call(name, pin.on?)
+					if (Time.now - last_release) > 0.5
+						@callback.call(name, pin.on?)
+					end
+					
+					last_release = Time.now if pin.off?
 				rescue => e
 					puts "Error in Button Procesing: #{e}"
 					puts e.backtrace
