@@ -109,21 +109,23 @@ def main
 				mpd.clear if mpd.queue.count > 0
 
 #				mpd.add data[id]
-				times_next = 1
+				times_next = 0
 				s = mpd.where(file: data[id]).first
 				album_songs = []
 				unless s.nil?
 					puts s.inspect
 					album_songs = mpd.where({:album => s.album}, {:strict => true})
 					album_songs.sort!{|s1,s2| s1.track <=> s2.track}
-					puts album_songs.inspect
+					#puts album_songs.inspect
 				end
+				puts "Found #{album_songs.size} songs."
 				if album_songs.size > 0
 					puts "Album found - trying to add"
 					found = false
 					album_songs.each do |s|
 						mpd.add s.file
 						found = true if s.file == data[id]
+						puts "#{s.file} == #{data[id]}"
 						times_next += 1 unless found
 					end
 					puts (found ? "Found": "Not Found")
@@ -131,8 +133,12 @@ def main
 				else
 					mpd.add data[id]
 				end
-				times_next.times { mpd.next }
 				mpd.play
+
+				puts "Skipping #{times_next} songs."
+				sleep 0.5 if times_next > 0
+				times_next.times { mpd.next }
+				#mpd.play
 
 			end # recording
 		when ButtonEvent
