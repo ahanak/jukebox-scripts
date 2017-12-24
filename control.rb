@@ -111,10 +111,13 @@ def main
 #				mpd.add data[id]
 				times_next = 1
 				s = mpd.where(file: data[id]).first
-				puts s.inspect
-				album_songs = mpd.where({:album => s.album}, {:strict => true})
-				album_songs.sort!{|s1,s2| s1.track <=> s2.track}
-				puts album_songs.inspect
+				album_songs = []
+				unless s.nil?
+					puts s.inspect
+					album_songs = mpd.where({:album => s.album}, {:strict => true})
+					album_songs.sort!{|s1,s2| s1.track <=> s2.track}
+					puts album_songs.inspect
+				end
 				if album_songs.size > 0
 					puts "Album found - trying to add"
 					found = false
