@@ -2,6 +2,7 @@
 
 require 'ruby-mpd'
 require 'thread'
+require 'uri'
 
 
 $:.unshift File.dirname(__FILE__)
@@ -43,6 +44,49 @@ EVENTS = Queue.new
 # The Events are simple structs
 class NfcEvent < Struct.new(:id); end
 class ButtonEvent < Struct.new(:button, :pressed); end
+
+
+# Try to select the other songs that should be queued with the selected one.
+# @return an array of url or an empty array on any error
+def generate_queue_for_song(mpd, url_string)
+  uri = URI.parse(url_string)
+	case uri.scheme
+    when 'file'
+      generate_queue_for_file_song(mpd, uri)
+    when 'local'
+      generate_queue_for_db_song(mpd, uri)
+    else
+      []
+	end
+end
+
+def generate_queue_for_file_song(mpd, uri)
+  path = URI.decode uri.path
+  directory = File.dirname(path)
+  extension = File.extname(path)
+
+  dir_songs = []
+
+  # Glob for e.g. /path/to/dir/**/*.mp3 to get all files with the same extension in this directory
+  begin
+    dir_songs = Dir.glob(File.join(directory, '**/*' + extension))
+  end
+  dir_songs.sort!
+  return dir_songs.collect! {|path| 'file://' + URI.encode(path)}
+end
+
+def generate_queue_for_db_song(mpd, uri)
+  # Query the url in the database to retrieve the album name
+	s = mpd.where(file: uri.to_s).first
+	album_songs = []
+	unless s.nil?
+		puts s.inspect
+		album_songs = mpd.where({:album => s.album}, {:strict => true})
+		album_songs.sort!{|s1,s2| s1.track <=> s2.track}
+		#puts album_songs.inspect
+	end
+	return album_songs.collect!{|s| s.file}
+end
 
 # Our Main program loop containing the most important logic
 def main
@@ -110,26 +154,21 @@ def main
 
 #				mpd.add data[id]
 				times_next = 0
-				s = mpd.where(file: data[id]).first
-				album_songs = []
-				unless s.nil?
-					puts s.inspect
-					album_songs = mpd.where({:album => s.album}, {:strict => true})
-					album_songs.sort!{|s1,s2| s1.track <=> s2.track}
-					#puts album_songs.inspect
-				end
+        album_songs = generate_queue_for_song(mpd, data[id])
 				puts "Found #{album_songs.size} songs."
 				if album_songs.size > 0
 					puts "Album found - trying to add"
 					found = false
+					stored_song = URI.decode(data[id]) 
 					album_songs.each do |s|
-						mpd.add s.file
-						found = true if s.file == data[id]
-						puts "#{s.file} == #{data[id]}"
+						mpd.add s
+						current_song = URI.decode(s)
+						found = true if current_song == stored_song
+						puts "#{current_song} == #{stored_song}"
 						times_next += 1 unless found
 					end
 					puts (found ? "Found": "Not Found")
-					times_next = 1 unless found
+					times_next = 0 unless found
 				else
 					mpd.add data[id]
 				end
