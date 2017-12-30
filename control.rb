@@ -139,6 +139,25 @@ def main
 			if data[id] == 'command:pause'
 				# first case in if / elsif construct to make this tag not overwriteable
 				mpd.pause = !mpd.paused?
+        puts "Play/Pause!"
+        UserFeedback.ok
+      elsif data[id] == 'command:random'
+        mpd.random = !mpd.random?
+        puts "Random toggled"
+        UserFeedback.ok
+			elsif data[id] =~ /command:(.+)/
+				cmd = $1
+				if mpd.respond_to? cmd
+					begin
+						mpd.send cmd
+            puts "Executed command: #{cmd}"
+            UserFeedback.ok
+					rescue => e
+            puts "Exception while executing: #{cmd} #{e}"
+					end
+        else
+          puts "Command unknown: #{cmd}"
+        end
 			elsif recording
 				# Find out what song is currently played and store its path together with the tag id
 				song = mpd.current_song
