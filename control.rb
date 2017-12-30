@@ -136,7 +136,10 @@ def main
 			# the tag id
 			id = event.id
 
-			if recording
+			if data[id] == 'command:pause'
+				# first case in if / elsif construct to make this tag not overwriteable
+				mpd.pause = !mpd.paused?
+			elsif recording
 				# Find out what song is currently played and store its path together with the tag id
 				song = mpd.current_song
 				if song
