@@ -175,32 +175,26 @@ def main
 				mpd.clear if mpd.queue.count > 0
 
 #				mpd.add data[id]
-				times_next = 0
         album_songs = generate_queue_for_song(mpd, data[id])
 				puts "Found #{album_songs.size} songs."
 				if album_songs.size > 0
 					puts "Album found - trying to add"
-					found = false
-					stored_song = URI.decode(data[id]) 
+
+					stored_song = URI.decode(data[id])
+          found = album_songs.find_index{|s| URI.decode(s) == stored_song}
+          puts (found ? "Found": "Not Found")
+          if found && found > 0
+            new_order = album_songs[found..-1]
+            new_order += album_songs[0..(found-1)]
+            album_songs = new_order
+          end
 					album_songs.each do |s|
 						mpd.add s
-						current_song = URI.decode(s)
-						found = true if current_song == stored_song
-						puts "#{current_song} == #{stored_song}"
-						times_next += 1 unless found
 					end
-					puts (found ? "Found": "Not Found")
-					times_next = 0 unless found
 				else
 					mpd.add data[id]
 				end
 				mpd.play
-
-				puts "Skipping #{times_next} songs."
-				sleep 0.5 if times_next > 0
-				times_next.times { mpd.next }
-				#mpd.play
-
 			end # recording
 		when ButtonEvent
 			# a button was pressed, react in the right way
